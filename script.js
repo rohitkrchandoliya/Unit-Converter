@@ -1,216 +1,137 @@
-// Function to update the units based on the selected category
+// Unit conversion factors are expressed relative to a canonical base unit.
+const UNIT_FACTORS = {
+    length: {
+        meters: 1,
+        kilometers: 1000,
+        miles: 1609.344,
+        inches: 0.0254,
+        centimeters: 0.01,
+        yards: 0.9144
+    },
+    weight: {
+        grams: 1,
+        kilograms: 1000,
+        pounds: 453.59237,
+        ounces: 28.349523125,
+        // "Tons" means metric tonnes in this converter.
+        tons: 1000000
+    },
+    area: {
+        squaremeters: 1,
+        squarekilometers: 1000000,
+        squaremiles: 2589988.110336,
+        acres: 4046.8564224,
+        hectares: 10000
+    },
+    volume: {
+        cubicmeters: 1,
+        liters: 0.001,
+        // US liquid gallons.
+        gallons: 0.003785411784,
+        cubicinches: 0.000016387064,
+        cubicfeet: 0.028316846592
+    },
+    speed: {
+        meterssecond: 1,
+        kilometershour: 1 / 3.6,
+        mileshour: 0.44704
+    },
+    time: {
+        seconds: 1,
+        minutes: 60,
+        hours: 3600,
+        days: 86400,
+        weeks: 604800
+    }
+};
+
+const UNIT_OPTIONS = {
+    length: ['Meters', 'Kilometers', 'Miles', 'Inches', 'Centimeters', 'Yards'],
+    temperature: ['Celsius', 'Fahrenheit', 'Kelvin'],
+    weight: ['Grams', 'Kilograms', 'Pounds', 'Ounces', 'Tons'],
+    area: ['Square Meters', 'Square Kilometers', 'Square Miles', 'Acres', 'Hectares'],
+    volume: ['Cubic Meters', 'Liters', 'Gallons', 'Cubic Inches', 'Cubic Feet'],
+    speed: ['Meters/Second', 'Kilometers/Hour', 'Miles/Hour'],
+    time: ['Seconds', 'Minutes', 'Hours', 'Days', 'Weeks']
+};
+
+function unitValue(unit) {
+    return unit.toLowerCase().replace(/[\s/]/g, '');
+}
+
+// Populate both unit selectors for the selected category.
 function updateUnits(unitType) {
     const fromUnitSelect = document.getElementById('fromUnit');
     const toUnitSelect = document.getElementById('toUnit');
+    const units = UNIT_OPTIONS[unitType] || [];
 
-    // Clear previous options
-    fromUnitSelect.innerHTML = '';
-    toUnitSelect.innerHTML = '';
+    fromUnitSelect.replaceChildren();
+    toUnitSelect.replaceChildren();
 
-    if (unitType === "length") {
-        const lengthUnits = ['Meters', 'Kilometers', 'Miles', 'Inches', 'Centimeters', 'Yards'];
-        lengthUnits.forEach(unit => {
-            const option = document.createElement('option');
-            option.value = unit.toLowerCase();
-            option.textContent = unit;
-            fromUnitSelect.appendChild(option);
-            const toOption = option.cloneNode(true);
-            toUnitSelect.appendChild(toOption);
-        });
-    } else if (unitType === "temperature") {
-        const tempUnits = ['Celsius', 'Fahrenheit', 'Kelvin'];
-        tempUnits.forEach(unit => {
-            const option = document.createElement('option');
-            option.value = unit.toLowerCase();
-            option.textContent = unit;
-            fromUnitSelect.appendChild(option);
-            const toOption = option.cloneNode(true);
-            toUnitSelect.appendChild(toOption);
-        });
-    } else if (unitType === "weight") {
-        const weightUnits = ['Grams', 'Kilograms', 'Pounds', 'Ounces', 'Tons'];
-        weightUnits.forEach(unit => {
-            const option = document.createElement('option');
-            option.value = unit.toLowerCase();
-            option.textContent = unit;
-            fromUnitSelect.appendChild(option);
-            const toOption = option.cloneNode(true);
-            toUnitSelect.appendChild(toOption);
-        });
-    } else if (unitType === "area") {
-        const areaUnits = ['Square Meters', 'Square Kilometers', 'Square Miles', 'Acres', 'Hectares'];
-        areaUnits.forEach(unit => {
-            const option = document.createElement('option');
-            option.value = unit.toLowerCase().replace(/\s/g, '');
-            option.textContent = unit;
-            fromUnitSelect.appendChild(option);
-            const toOption = option.cloneNode(true);
-            toUnitSelect.appendChild(toOption);
-        });
-    } else if (unitType === "volume") {
-        const volumeUnits = ['Cubic Meters', 'Liters', 'Gallons', 'Cubic Inches', 'Cubic Feet'];
-        volumeUnits.forEach(unit => {
-            const option = document.createElement('option');
-            option.value = unit.toLowerCase().replace(/\s/g, '');
-            option.textContent = unit;
-            fromUnitSelect.appendChild(option);
-            const toOption = option.cloneNode(true);
-            toUnitSelect.appendChild(toOption);
-        });
-    } else if (unitType === "speed") {
-        const speedUnits = ['Meters/Second', 'Kilometers/Hour', 'Miles/Hour'];
-        speedUnits.forEach(unit => {
-            const option = document.createElement('option');
-            option.value = unit.toLowerCase().replace(/\//g, '');
-            option.textContent = unit;
-            fromUnitSelect.appendChild(option);
-            const toOption = option.cloneNode(true);
-            toUnitSelect.appendChild(toOption);
-        });
-    } else if (unitType === "time") {
-        const timeUnits = ['Seconds', 'Minutes', 'Hours', 'Days', 'Weeks'];
-        timeUnits.forEach(unit => {
-            const option = document.createElement('option');
-            option.value = unit.toLowerCase();
-            option.textContent = unit;
-            fromUnitSelect.appendChild(option);
-            const toOption = option.cloneNode(true);
-            toUnitSelect.appendChild(toOption);
-        });
-    }
+    units.forEach(label => {
+        const value = unitValue(label);
+        fromUnitSelect.add(new Option(label, value));
+        toUnitSelect.add(new Option(label, value));
+    });
 }
 
-// Event listener for the unit type select
+function convertTemperature(value, fromUnit, toUnit) {
+    // Convert the input to Celsius first, then from Celsius to the target unit.
+    let celsius;
+    if (fromUnit === 'celsius') celsius = value;
+    else if (fromUnit === 'fahrenheit') celsius = (value - 32) * 5 / 9;
+    else if (fromUnit === 'kelvin') celsius = value - 273.15;
+    else throw new Error('Unsupported temperature unit');
+
+    if (celsius < -273.15) {
+        throw new RangeError('The value is below absolute zero.');
+    }
+
+    if (toUnit === 'celsius') return celsius;
+    if (toUnit === 'fahrenheit') return celsius * 9 / 5 + 32;
+    if (toUnit === 'kelvin') return celsius + 273.15;
+    throw new Error('Unsupported temperature unit');
+}
+
+function convertValue(value, unitType, fromUnit, toUnit) {
+    if (fromUnit === toUnit) return value;
+
+    if (unitType === 'temperature') {
+        return convertTemperature(value, fromUnit, toUnit);
+    }
+
+    const factors = UNIT_FACTORS[unitType];
+    if (!factors || !(fromUnit in factors) || !(toUnit in factors)) {
+        throw new Error('Unsupported unit conversion.');
+    }
+
+    return value * factors[fromUnit] / factors[toUnit];
+}
+
 document.getElementById('unitType').addEventListener('change', function () {
-    const unitType = this.value;
-    updateUnits(unitType);
+    updateUnits(this.value);
 });
 
-// Conversion functions for Length, Temperature, Weight, Area, Volume, Speed, Time
 document.getElementById('convertBtn').addEventListener('click', function () {
-    const value = parseFloat(document.getElementById('valueInput').value);
+    const input = document.getElementById('valueInput');
+    const resultElement = document.getElementById('convertedValue');
+    const value = Number(input.value);
     const unitType = document.getElementById('unitType').value;
     const fromUnit = document.getElementById('fromUnit').value;
     const toUnit = document.getElementById('toUnit').value;
 
-    if (isNaN(value)) {
-        alert("Please enter a valid number!");
+    if (input.value.trim() === '' || !Number.isFinite(value)) {
+        resultElement.textContent = 'Please enter a valid number.';
         return;
     }
 
-    let result = 0;
-
-    if (unitType === "length") {
-        result = convertLength(value, fromUnit, toUnit);
-    } else if (unitType === "temperature") {
-        result = convertTemperature(value, fromUnit, toUnit);
-    } else if (unitType === "weight") {
-        result = convertWeight(value, fromUnit, toUnit);
-    } else if (unitType === "area") {
-        result = convertArea(value, fromUnit, toUnit);
-    } else if (unitType === "volume") {
-        result = convertVolume(value, fromUnit, toUnit);
-    } else if (unitType === "speed") {
-        result = convertSpeed(value, fromUnit, toUnit);
-    } else if (unitType === "time") {
-        result = convertTime(value, fromUnit, toUnit);
+    try {
+        const result = convertValue(value, unitType, fromUnit, toUnit);
+        resultElement.textContent = Number(result.toPrecision(12)).toString();
+    } catch (error) {
+        resultElement.textContent = error.message || 'Conversion failed.';
     }
-
-    document.getElementById('convertedValue').innerText = result;
 });
 
-// Length conversion
-function convertLength(value, fromUnit, toUnit) {
-    if (fromUnit === "meters" && toUnit === "kilometers") {
-        return value / 1000;
-    } else if (fromUnit === "meters" && toUnit === "miles") {
-        return value / 1609.34;
-    } else if (fromUnit === "meters" && toUnit === "inches") {
-        return value * 39.3701;
-    } else if (fromUnit === "kilometers" && toUnit === "meters") {
-        return value * 1000;
-    } else if (fromUnit === "kilometers" && toUnit === "miles") {
-        return value / 1.60934;
-    } else if (fromUnit === "miles" && toUnit === "kilometers") {
-        return value * 1.60934;
-    }
-    return value;
-}
-
-// Temperature conversion
-function convertTemperature(value, fromUnit, toUnit) {
-    if (fromUnit === "celsius" && toUnit === "fahrenheit") {
-        return value * 9/5 + 32;
-    } else if (fromUnit === "celsius" && toUnit === "kelvin") {
-        return value + 273.15;
-    } else if (fromUnit === "fahrenheit" && toUnit === "celsius") {
-        return (value - 32) * 5/9;
-    } else if (fromUnit === "fahrenheit" && toUnit === "kelvin") {
-        return (value - 32) * 5/9 + 273.15;
-    } else if (fromUnit === "kelvin" && toUnit === "celsius") {
-        return value - 273.15;
-    } else if (fromUnit === "kelvin" && toUnit === "fahrenheit") {
-        return (value - 273.15) * 9/5 + 32;
-    }
-    return value;
-}
-
-// Weight conversion
-function convertWeight(value, fromUnit, toUnit) {
-    if (fromUnit === "grams" && toUnit === "kilograms") {
-        return value / 1000;
-    } else if (fromUnit === "grams" && toUnit === "pounds") {
-        return value * 0.00220462;
-    } else if (fromUnit === "kilograms" && toUnit === "grams") {
-        return value * 1000;
-    } else if (fromUnit === "kilograms" && toUnit === "pounds") {
-        return value * 2.20462;
-    } else if (fromUnit === "pounds" && toUnit === "grams") {
-        return value * 453.592;
-    } else if (fromUnit === "pounds" && toUnit === "kilograms") {
-        return value / 2.20462;
-    }
-    return value;
-}
-
-// Area conversion
-function convertArea(value, fromUnit, toUnit) {
-    if (fromUnit === "squaremeters" && toUnit === "squarekilometers") {
-        return value / 1000000;
-    } else if (fromUnit === "squaremeters" && toUnit === "squaremiles") {
-        return value / 2589988;
-    } else if (fromUnit === "squaremeters" && toUnit === "acres") {
-        return value * 0.000247105;
-    }
-    return value;
-}
-
-// Volume conversion
-function convertVolume(value, fromUnit, toUnit) {
-    if (fromUnit === "liters" && toUnit === "cubicmeters") {
-        return value / 1000;
-    }
-    return value;
-}
-
-// Speed conversion
-function convertSpeed(value, fromUnit, toUnit) {
-    if (fromUnit === "meterssecond" && toUnit === "kilometershour") {
-        return value * 3.6;
-    } else if (fromUnit === "kilometershour" && toUnit === "meterssecond") {
-        return value / 3.6;
-    }
-    return value;
-}
-
-// Time conversion
-function convertTime(value, fromUnit, toUnit) {
-    if (fromUnit === "seconds" && toUnit === "minutes") {
-        return value / 60;
-    } else if (fromUnit === "minutes" && toUnit === "seconds") {
-        return value * 60;
-    } else if (fromUnit === "seconds" && toUnit === "hours") {
-        return value / 3600;
-    }
-    return value;
-}
+// Initialize the selectors for the default category on page load.
+updateUnits(document.getElementById('unitType').value);
